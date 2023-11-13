@@ -29,27 +29,27 @@ def parse_args(is_server: bool = False):
         )
         args = parser.parse_args()
         return args.broadcast_port, args.path_file
-    else:
-        parser = argparse.ArgumentParser(
-            description="Client for the file transfer application using UDP"
-        )
-        parser.add_argument(
-            "client_port",
-            type=int,
-            help="The port to receive the file"
-        )
-        parser.add_argument(
-            "broadcast_port",
-            type=int,
-            help="The port to broadcast the file"
-        )
-        parser.add_argument(
-            "path_file",
-            type=str,
-            help="The path to the file to be received"
-        )
-        args = parser.parse_args()
-        return args.client_port, args.broadcast_port, args.path_file
+
+    parser = argparse.ArgumentParser(
+        description="Client for the file transfer application using UDP"
+    )
+    parser.add_argument(
+        "client_port",
+        type=int,
+        help="The port to receive the file"
+    )
+    parser.add_argument(
+        "broadcast_port",
+        type=int,
+        help="The port to broadcast the file"
+    )
+    parser.add_argument(
+        "path_file",
+        type=str,
+        help="The path to the file to be received"
+    )
+    args = parser.parse_args()
+    return args.client_port, args.broadcast_port, args.path_file
 
 
 if __name__ == "__main__":
