@@ -16,13 +16,13 @@ class Segment:
     def __str__(self):
         # Enable better printout of segments
         output = ""
-        output += f"{'SeqNum':12}\t\t| {self.seq}\n"
-        output += f"{'AckNum':12}\t\t| {self.ack}\n"
-        output += f"{'FlagSYN':12}\t\t| {self.flag.syn >> 1}\n"
-        output += f"{'FlagACK':12}\t\t| {self.flag.ack >> 4}\n"
-        output += f"{'FlagFIN':12}\t\t| {self.flag.fin}\n"
-        output += f"{'Checksum':24}| {self.checksum}\n"
-        output += f"{'MsgSize':24}| {len(self.data)}\n"
+        output += f"{'-- SeqNum --'}\n{self.seq}\n"
+        output += f"{'-- AckNum --'}\n{self.ack}\n"
+        output += f"{'-- Flag(SYN) --'}\n{self.flag.syn >> 1}\n"
+        output += f"{'-- Flag(ACK) --'}\n{self.flag.ack >> 4}\n"
+        output += f"{'-- Flag(FIN) --'}\n{self.flag.fin}\n"
+        output += f"{'-- Checksum --'}\n{self.checksum}\n"
+        output += f"{'PayloadSize : '} {len(self.data)}\n"
         return output
 
     def __calculate_checksum(self) -> int:
