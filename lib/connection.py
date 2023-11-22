@@ -14,7 +14,7 @@ class Connection() :
             self.socket.bind((ip, broadcast))
             print("Server started on address", ip, "with port", broadcast)
         else :
-            self.socket.bind(port)
+            self.socket.bind((ip, port))
             print("Client started on address", ip, "with port", port)
         self.socket.settimeout(TIMEOUT)
     
