@@ -1,7 +1,6 @@
 import socket
+from constants import TIMEOUT, SEGMENT_SIZE
 
-TIMEOUT = 5
-SEGMENT_SIZE = 32768
 
 class Connection() :
     """Class representing the socket connection"""

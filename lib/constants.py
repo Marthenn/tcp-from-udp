@@ -1,17 +1,21 @@
-
+"""Constants used throughout the app"""
 # Addresses
 DEFAULT_IP = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_BROADCAST_PORT = 9999
 
+# Checksum
+CRC_POLYNOM = 0x1021
+CRC_INIT = 0xFFFF
+
+# Connection
+TIMEOUT = 5
+SEGMENT_SIZE = 32768
+
 # Sizes
 SEGMENT_SIZE = 32768
 PAYLOAD_SIZE = SEGMENT_SIZE - 12
 WINDOW_SIZE = 3
-
-# Timeout
-TIMEOUT = 5
-TIMEOUT_LISTEN = 30
 
 # Flags
 SYN_FLAG = 0b000000010  # 2
