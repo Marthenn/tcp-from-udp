@@ -1,10 +1,10 @@
 import socket
-from constants import TIMEOUT, SEGMENT_SIZE
+from constants import TIMEOUT, SEGMENT_SIZE, DEFAULT_IP, DEFAULT_BROADCAST_PORT, DEFAULT_PORT
 
 
 class Connection() :
     """Class representing the socket connection"""
-    def __init__(self, ip : str, port : int, broadcast : int, as_server : bool) -> None:
+    def __init__(self, ip : str = DEFAULT_IP, port : int = DEFAULT_PORT, broadcast : int = DEFAULT_BROADCAST_PORT, as_server : bool = False) -> None:
         self.ip = ip
         self.port = port
         self.broadcast_port = broadcast
