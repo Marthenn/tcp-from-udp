@@ -1,4 +1,8 @@
 import socket
+import threading
+
+TIMEOUT = 5
+SEGMENT_SIZE = 32768
 
 class Connection() :
     def __init__(self, ip : str, port : int, broadcast : int, as_server : bool) -> None:
@@ -8,8 +12,12 @@ class Connection() :
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if (as_server) :
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind((ip, port))
-        print("Connection open")
+            self.socket.bind((ip, broadcast))
+            print("Server started on address", ip, "with port", broadcast)
+        else :
+            self.socket.bind(port)
+            print("Client started on address", ip, "with port", port)
+        self.socket.settimeout(TIMEOUT)
     
     def send(self, msg, ip : str, port : int) :
         self.socket.sendto(msg, (ip, port))
@@ -17,8 +25,11 @@ class Connection() :
     def close(self) :
         self.socket.close()
     
-    def listen(self) :
-        while True :
-            print("Waiting for client") 
-            msg, address = self.socket.recvfrom(2048)
-            print("Received message:",  msg, "from", address)
+    def listen_segment(self) :
+        try :
+            segment = self.socket.recv(SEGMENT_SIZE)
+            return segment
+        except TimeoutError :
+            raise TimeoutError
+    
+    
