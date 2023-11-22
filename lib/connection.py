@@ -33,4 +33,3 @@ class Connection() :
             return segment
         except TimeoutError as exc:
             raise TimeoutError from exc
-        
