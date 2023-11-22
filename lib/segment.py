@@ -4,9 +4,10 @@ from segment_flag import SegmentFlag
 from crc16 import crc16
 
 class Segment:
+    """Class that represent the Segment being transmitted"""
     # -- Private functions --
     def __init__(self):
-        # Construct segment
+        """Construct segment"""
         self.flag = SegmentFlag(0b0)
         self.seq = 0
         self.ack = 0
@@ -14,7 +15,7 @@ class Segment:
         self.data = ""
 
     def __str__(self):
-        # Enable better printout of segments
+        """Enable better printout of segments"""
         output = ""
         output += f"{'-- SeqNum --'}\n{self.seq}\n"
         output += f"{'-- AckNum --'}\n{self.ack}\n"
@@ -55,7 +56,7 @@ class Segment:
     # -- Byte operations --
     @classmethod
     def from_bytes(cls, src: bytes):
-        # Convert the src byte into a Segment object
+        """Get a Segment object constructed from the src byte."""
         segment = Segment()
         segment.seq = struct.unpack("I", src[0:4])[0]
         segment.ack = struct.unpack("I", src[4:8])[0]
@@ -65,11 +66,11 @@ class Segment:
         return segment
 
     def to_bytes(self) -> bytes:
-        # Convert the Segment object to pure bytes
+        """Convert the Segment object to pure bytes"""
         self.checksum = self.__calculate_checksum()
         result = b""
         result += struct.pack("II", self.seq, self.ack)
-        result += self.flag.get_flag_bytes()
+        result += self.flag.to_flag_bytes()
         result += struct.pack("x")
         result += struct.pack("H", self.checksum)
         result += self.data
@@ -77,5 +78,5 @@ class Segment:
 
     # -- Checksum --
     def is_valid(self) -> bool:
-        # Check whether the Segment object checksum is correct
+        """Check whether the Segment object checksum is correct"""
         return self.__calculate_checksum() == self.checksum

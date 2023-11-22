@@ -1,10 +1,10 @@
 import socket
-import threading
 
 TIMEOUT = 5
 SEGMENT_SIZE = 32768
 
 class Connection() :
+    """Class representing the socket connection"""
     def __init__(self, ip : str, port : int, broadcast : int, as_server : bool) -> None:
         self.ip = ip
         self.port = port
@@ -20,16 +20,18 @@ class Connection() :
         self.socket.settimeout(TIMEOUT)
     
     def send(self, msg, ip : str, port : int) :
+        """Send message through given ip and port"""
         self.socket.sendto(msg, (ip, port))
     
     def close(self) :
+        """Close the socket held by the Connection object"""
         self.socket.close()
     
     def listen_segment(self) :
+        """Listen for segment from the socket held by this object"""
         try :
             segment = self.socket.recv(SEGMENT_SIZE)
             return segment
-        except TimeoutError :
-            raise TimeoutError
-    
-    
+        except TimeoutError as exc:
+            raise TimeoutError from exc
+        

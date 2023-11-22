@@ -3,14 +3,15 @@ from constants import ACK_FLAG, FIN_FLAG, SYN_FLAG
 
 
 class SegmentFlag:
+    """Class that represent the syn, ack, and fin flags of the Segment object"""
     def __init__(self, flag: bytes):
         # Init flag variable from flag byte
         self.syn = flag & SYN_FLAG
         self.ack = flag & ACK_FLAG
         self.fin = flag & FIN_FLAG
 
-    def get_flag_bytes(self) -> bytes:
-        # Convert this object to flag in byte form
+    def to_flag_bytes(self) -> bytes:
+        """Convert this object to flag in byte form"""
         return struct.pack("B", self.syn | self.ack | self.fin)
 
     def get_flag(self) -> int:
@@ -18,6 +19,7 @@ class SegmentFlag:
 
     @classmethod
     def from_flag_list(cls, flag_list: list):
+        """Get a SegmentFlag object from the given flag_list"""
         new_flag = 0b0
         for flag in flag_list:
             if flag == "SYN":
