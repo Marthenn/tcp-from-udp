@@ -12,10 +12,10 @@ class Connection() :
         if (as_server) :
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind((ip, broadcast))
-            print("Server started on address", ip, "with port", broadcast)
+            print("[ INFO ] Server started on address", ip, "with port", broadcast)
         else :
             self.socket.bind((ip, port))
-            print("Client started on address", ip, "with port", port)
+            print("[ INFO ] Client started on address", ip, "with port", port)
         self.socket.settimeout(TIMEOUT)
     
     def send(self, msg, ip : str, port : int) :
