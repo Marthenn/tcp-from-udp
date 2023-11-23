@@ -10,6 +10,7 @@ from lib.connection import Connection
 from lib.segment import Segment
 from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE
 
+
 class Server :
     """
     The server class of the file transfer application using UDP
@@ -56,9 +57,9 @@ class Server :
                 break
     
     def three_way_handshake(self, client_ip : str, client_port : int) -> bool :
-        '''
+        """
         Melakukan three_way_handshake dari sisi server, diasumsikan server sudah menerima flag "SYN" dari client
-        '''
+        """
         print ("Initiating handshake with client :", client_ip, client_port)
         segment = Segment()
         segment.set_flag(["SYN", "ACK"])
@@ -141,4 +142,8 @@ class Server :
     def get_segment_count(self):
         """Get how many segment has to be created to sent the given file"""
         return ceil(self.get_file_size() / SEGMENT_SIZE)
-        
+
+
+if __name__ == "__main__":
+    SERVER = Server()
+    SERVER.listen_for_clients()
