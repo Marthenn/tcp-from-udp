@@ -5,13 +5,14 @@ import sys
 import os
 from typing import List
 from math import ceil
+from socket import timeout
 from lib.parser import parse_args
 from lib.connection import Connection
 from lib.segment import Segment
-from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE
+from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG
 
 
-class Server :
+class Server:
     """
     The server class of the file transfer application using UDP
     The server should be able to:
@@ -25,67 +26,86 @@ class Server :
         self.input_file_path = input_file_path
         self.input_file_name = self.input_file_path.split("/")[-1]
         self.file = self.open_file()
+        self.segment = Segment()
         self.segment_list : List[Segment] = []
+        self.client_list = []
 
     def listen_for_clients(self) :
-        self.client_list = []
+        print("[ INFO ] Listening for clients")
         while True:
             try :
                 segment, client_addr = self.conn.listen_segment()
                 client_ip, client_port = client_addr
-                client_segment = Segment.from_bytes(segment)
-                flag = client_segment.get_flag()
-                if flag == 2 : # Flag SYN
-                    print("Got request from client :", client_ip, client_port)
-                    cont = input("Continue listening ? y/n").lower()
-                    while cont != 'y' and cont != 'n' :
-                        print("Input not valid")
-                        cont = input("Continue listening ? y/n").lower()
-                    print("Initiating three way handshake")
-                    if self.three_way_handshake(client_ip, client_port) :
-                        print("Three way handshake successful. Saving connection.")
-                        self.client_list.append(client_addr)
-                    else :
-                        print("Three way handshake failed. Aborting connection.")
-                    if cont == 'n' :
-                        print("Stop searching for client. Exiting process")
-                        break
-                else :
-                    print("Didn't receive SYN flag, can't start three way handshake")
-            except TimeoutError :
-                print("Timeout listening to client. Aborting")
+                self.client_list.append(client_addr)
+                print(f"[ INFO ] Received connection request from client: {client_ip}:{client_port}")
+
+                answer = input("[ PROMPT ] Do you want to add more clients? (y/n) ")
+                while not (answer.lower() in ["y", "n"]):
+                    print("[ ERROR ] Invalid input")
+                    answer = input("[ PROMPT ] Do you want to add more clients? (y/n) ")
+                if answer.lower() == "n":
+                    print("\n[ INFO ] The following clients will be served:")
+                    for idx, client in enumerate(self.client_list):
+                        print(f"[ INFO ] {idx+1}. {client[0]}:{client[1]}")
+                    print()
+                    break
+
+            except timeout:
+                print("[ TIMEOUT ] Timeout while listening for client, exiting")
                 break
     
-    def three_way_handshake(self, client_ip : str, client_port : int) -> bool :
+    def three_way_handshake(self, client_addr):
         """
-        Melakukan three_way_handshake dari sisi server, diasumsikan server sudah menerima flag "SYN" dari client
+        Establishes a three-way handshake connection with the client
+        1. Receive SYN from client
+        2. Send SYN-ACK to client
+        3. Receive ACK from client
         """
-        print ("Initiating handshake with client :", client_ip, client_port)
-        segment = Segment()
-        segment.set_flag(["SYN", "ACK"])
-        header = segment.get_header()
-        header["seq"] = 0
-        header["ack"] = 0
-        self.conn.send(segment.to_bytes(), client_ip, client_port)
-        try : 
-            validSegment = False
-            while (not(validSegment)) :
-                ack, clientAddr = self.conn.listen_segment()
-                ackSegment = Segment.from_bytes(ack)
-                if clientAddr[0] != client_ip or clientAddr[1] != client_port : # Bukan dari client yang bersangkutan
-                    print("Wrong client, listening again")
-                elif ackSegment.get_flag() < 16 : # Bukan flag ACK
-                    print("Wrong flag. Aborting handshake")
-                    return False
-                else :
-                    validSegment = True
-                    print("Received ACK from client :", client_ip, client_port, ". Connection established.")
-            return True
-        except TimeoutError :
-            print("Waiting for ACK from client :", client_ip, client_port, "timed out. Aborting connection")
-            return False
+        print(
+            f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] Initiating three-way handshake"
+        )
+        self.segment.set_flag(["SYN"])
 
-    def open_file(self) :
+        while True:
+            if self.segment.get_flag() == SYN_FLAG:
+                print(
+                    f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] sent SYN to server"
+                )
+                self.conn.send(self.segment.to_bytes(), *client_addr)
+                try:
+                    data, _ = self.conn.listen_segment()
+                    self.segment = Segment.from_bytes(data)
+                except timeout:
+                    print(
+                        f"[ TIMEOUT ] [Client {client_addr[0]}:{client_addr[1]}] ACK response timeout, resending SYN"
+                    )
+
+            elif self.segment.get_flag() == SYN_ACK_FLAG:
+                print(
+                    f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] received SYN-ACK from server"
+                )
+                print(
+                    f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] sent ACK to server"
+                )
+                header = self.segment.get_header()
+                header["seq"] = 1
+                header["ack"] = 1
+                self.segment.set_header(header)
+                self.segment.set_flag(["ACK"])
+                self.conn.send(self.segment.to_bytes(), *client_addr)
+                break
+
+            else:
+                print(
+                    f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] is waiting for file already, ending three-way handshake"
+                )
+                break
+
+        print(
+            f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] Three-way handshake established"
+        )
+
+    def open_file(self):
         """
         Return the file handle of the input file
         """
@@ -143,7 +163,12 @@ class Server :
         """Get how many segment has to be created to sent the given file"""
         return ceil(self.get_file_size() / SEGMENT_SIZE)
 
+    def initiate_transfer(self):
+        for client in self.client_list:
+            self.three_way_handshake(client)
+
 
 if __name__ == "__main__":
     SERVER = Server()
     SERVER.listen_for_clients()
+    SERVER.initiate_transfer()
