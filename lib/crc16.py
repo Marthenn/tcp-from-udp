@@ -6,7 +6,7 @@ x16 + x12 + x5 + 1
 The CRC-16/CCITT-FALSE algorithm is checked against the following online calculator:
 https://crccalc.com/
 """
-from constants import CRC_INIT, CRC_POLYNOM
+from lib.constants import CRC_INIT, CRC_POLYNOM
 
 def crc16(data: bytes) -> int:
     """Calculate the CRC-16 of a byte string."""

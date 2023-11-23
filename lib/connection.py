@@ -1,5 +1,5 @@
 import socket
-from constants import TIMEOUT, SEGMENT_SIZE, DEFAULT_IP, DEFAULT_BROADCAST_PORT, DEFAULT_PORT
+from lib.constants import TIMEOUT, SEGMENT_SIZE, DEFAULT_IP, DEFAULT_BROADCAST_PORT, DEFAULT_PORT
 
 
 class Connection() :
@@ -29,7 +29,6 @@ class Connection() :
     def listen_segment(self) :
         """Listen for segment from the socket held by this object"""
         try :
-            segment = self.socket.recv(SEGMENT_SIZE)
-            return segment
+            return self.socket.recvfrom(SEGMENT_SIZE)
         except TimeoutError as exc:
             raise TimeoutError from exc

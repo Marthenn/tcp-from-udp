@@ -1,5 +1,5 @@
 import struct
-from constants import ACK_FLAG, FIN_FLAG, SYN_FLAG
+from lib.constants import ACK_FLAG, FIN_FLAG, SYN_FLAG
 
 
 class SegmentFlag:

@@ -1,7 +1,7 @@
 import struct
 
-from segment_flag import SegmentFlag
-from crc16 import crc16
+from lib.segment_flag import SegmentFlag
+from lib.crc16 import crc16
 
 class Segment:
     """Class that represent the Segment being transmitted"""
@@ -73,6 +73,11 @@ class Segment:
         result += self.flag.to_flag_bytes()
         result += struct.pack("x")
         result += struct.pack("H", self.checksum)
+
+        # handling if data is empty
+        if self.data == "":
+            return result
+
         result += self.data
         return result
 
