@@ -63,6 +63,10 @@ class Client:
 
                 if self.segment.get_flag() == SYN_FLAG:
                     self.segment.set_flag(["SYN", "ACK"])
+                    header = self.segment.get_header()
+                    header["ack"] = header["seq"] + 1
+                    header["seq"] = 0
+                    self.segment.set_header(header)
                     print(
                         f"[ INFO ] [Server {server_addr[0]}:{server_addr[1]}] received SYN from client"
                     )
@@ -88,6 +92,10 @@ class Client:
                         f"[ INFO ] [Server {server_addr[0]}:{server_addr[1]}] already received segment file, resetting connection"
                     )
                     self.segment.set_flag(["SYN", "ACK"])
+                    header = self.segment.get_header()
+                    header["ack"] = header["seq"] + 1
+                    header["seq"] = 0
+                    self.segment.set_header(header)
                     print(
                         f"[ INFO ] [Server {server_addr[0]}:{server_addr[1]}] sent SYN-ACK to client"
                     )

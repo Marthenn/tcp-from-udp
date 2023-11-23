@@ -71,6 +71,10 @@ class Server:
                 print(
                     f"[ INFO ] [Client {client_addr[0]}:{client_addr[1]}] sent SYN to server"
                 )
+                header = self.segment.get_header()
+                header["seq"] = 0
+                header["ack"] = 0
+                self.segment.set_header(header)
                 self.conn.send(self.segment.to_bytes(), *client_addr)
                 try:
                     data, _ = self.conn.listen_segment()
