@@ -78,3 +78,13 @@ class TicTacToe:
             return True
         else:
             return False
+
+if __name__ == '__main__':
+    game = TicTacToe()
+    game.print_board()
+    while not game.check_game_over():
+        pos = int(input("Input position: "))
+        game.play(pos)
+        game.print_board()
+    print("Game over")
+    print("Winner:", game.get_winner())
