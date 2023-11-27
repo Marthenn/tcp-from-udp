@@ -68,7 +68,7 @@ class TicTacToe:
             return None
 
     def play(self, pos):
-        if self.board[pos] == 0:
+        if pos >= 1 and pos < 10 and self.board[pos] == 0:
             if self.turn == Player.X:
                 self.board[pos] = 1
                 self.turn = Player.O
