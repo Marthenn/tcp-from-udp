@@ -196,7 +196,7 @@ class Client:
                         # Prevent the loop from continuing, which would cause ACK to be sent twice
                         continue
                     # End of File
-                    elif self.segment.get_flag() == FIN_FLAG:
+                    elif self.segment.get_flag() == FIN_FLAG | ACK_FLAG:
                         print(
                             f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received FIN"
                         )
@@ -217,32 +217,38 @@ class Client:
                     f"[ WARNING ] [Server {server_address[0]}:{server_address[1]}] Received Segment {self.segment.get_header()['seq']} [Timeout]"
                 )
                 self.acknowledge(seq_number, server_address)
+        self.closing_connection(seq_number, server_address)
 
-        # Received FIN, sending FIN-ACK
+    def closing_connection(self, seq_number, server_address):
+        """Received FIN-ACK, starting the protocol to close connection"""
+        # Send ACK
+        print(
+            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending ACK")
+        self.acknowledge(seq_number, server_address)
+
+        # Send FIN-ACK
+        print(
+            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending FIN-ACK")
+        fin_ack_segment = Segment()
+        fin_ack_segment.set_header({
+            "ack": seq_number,
+            "seq": seq_number
+        })
+        fin_ack_segment.set_flag(["ACK"])
+        self.conn.send(fin_ack_segment.to_bytes(),
+                       server_address[0], server_address[1])
+
         is_ack_received = False
         time_limit = time.time() + TIMEOUT_LISTEN
         while not is_ack_received:
             try:
-                data, server_address = self.conn.listen_segment()
+                data, _ = self.conn.listen_segment()
                 ack_segment = Segment.from_bytes(data)
                 if ack_segment.get_flag() == ACK_FLAG:
                     print(
                         f"[ SUCCESS ] [Server {server_address[0]}:{server_address[1]}] ACK received, closing down connection."
                     )
                     is_ack_received = True
-                else:
-                    print(
-                        f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending FIN-ACK")
-                    fin_ack_segment = Segment()
-                    fin_ack_segment.set_header({
-                        "ack": seq_number,
-                        "seq": seq_number
-                    })
-                    fin_ack_segment.set_flag(["ACK", "FIN"])
-                    self.conn.send(fin_ack_segment.to_bytes(),
-                                   server_address[0], server_address[1])
-                    is_ack_received = False
-                    time_limit = time.time() + TIMEOUT_LISTEN
             except timeout:
                 if time.time() > time_limit:
                     print(
