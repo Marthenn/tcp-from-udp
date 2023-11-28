@@ -3,13 +3,14 @@ The module for the server class of the file transfer application using UDP
 """
 import sys
 import os
+import time
 from typing import List
 from math import ceil
 from socket import timeout
 from lib.parserGame import parse_args_game
 from lib.connection import Connection
 from lib.segment import Segment
-from lib.constants import DEFAULT_IP, SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, ACK_FLAG
+from lib.constants import DEFAULT_IP, SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, ACK_FLAG, TIMEOUT_LISTEN, FIN_ACK_FLAG
 from lib.tictactoe import TicTacToe
 from lib.crc16 import crc16
 
@@ -116,40 +117,103 @@ class ServerGame:
         '''
         Mulai permainan sebagai pemain pertama (X)
         '''
-        maxIdx = 0
+        maxIdx = len(self.client_list)
         for idx, client in enumerate(self.client_list):
             print(f"[ INFO ] {idx+1}. {client[0]}:{client[1]}")
-            maxIdx = idx
         chosenClient = int(input("Choose a client to play with. Type the number of the client from the list."))
-        choiceValid = chosenClient <= maxIdx+1 and chosenClient > 0
+        choiceValid = chosenClient <= maxIdx and chosenClient > 0
         while(not(choiceValid)) :
             chosenClient = int(input("Client number not valid. Type the number of the client from the list."))
             choiceValid = chosenClient <= maxIdx and chosenClient > 0
 
-        currClient = self.client_list[chosenClient-1]
-        print("Client valid. Starting game as player X. Gets first turn.")
-        gameOver = self.tic_tac_toe.check_game_over()
-        while(not(gameOver)) :
-            self.tic_tac_toe.print_board()
-            selfMove = input("Where do you want to place your piece ? Type the number of one of the empty squares.")
-            isValidMove = self.tic_tac_toe.play(int(selfMove))
-            while (not(isValidMove)) :
-                selfMove = input("Square is not valid. Type the number of one of the empty squares.")
+        while True :
+            self.tic_tac_toe.board = self.tic_tac_toe.create_board()
+            currClient = self.client_list[chosenClient-1]
+            print("Client valid. Starting game as player X. Gets first turn.")
+            gameOver = self.tic_tac_toe.check_game_over()
+            while(not(gameOver)) :
+                self.tic_tac_toe.print_board()
+                selfMove = input("Where do you want to place your piece ? Type the number of one of the empty squares.")
                 isValidMove = self.tic_tac_toe.play(int(selfMove))
-            self.send_move(int(selfMove), currClient)
-            gameOver = self.tic_tac_toe.check_game_over()
-            if (gameOver) :
-                break
+                while (not(isValidMove)) :
+                    selfMove = input("Square is not valid. Type the number of one of the empty squares.")
+                    isValidMove = self.tic_tac_toe.play(int(selfMove))
+                self.send_move(int(selfMove), currClient)
+                gameOver = self.tic_tac_toe.check_game_over()
+                if (gameOver) :
+                    break
+                oppMove = self.receive_move(currClient)
+                print(oppMove)
+                self.tic_tac_toe.play(oppMove)
+                gameOver = self.tic_tac_toe.check_game_over()
 
-            oppMove = self.receive_move(currClient)
-            print(oppMove)
-            self.tic_tac_toe.play(oppMove)
-            gameOver = self.tic_tac_toe.check_game_over()
+            self.tic_tac_toe.print_board()
+            print("The winner is", self.tic_tac_toe.get_winner())
 
-        print("The winner is", self.tic_tac_toe.get_winner())
+            self.segment.set_flag([])
+            self.close_connection(currClient)
+            break
+    
+    def shutdown(self) :
+        """Shutdown the server"""
+        self.conn.close()
+
+    def close_connection(self, client) :
+        self.segment.set_flag([])
+        fin_acked = False
+        time_limit = time.time() + TIMEOUT_LISTEN
+
+        while not fin_acked:
+            try :
+                self.segment.set_payload(bytes())
+                self.segment.set_flag(["FIN", "ACK"])
+                self.conn.send(self.segment.to_bytes(), client[0], client[1])
+                response, client_addr = self.conn.listen_segment()
+                self.segment = Segment.from_bytes(response)
+                if (client_addr == client and self.segment.get_flag() == ACK_FLAG) :
+                    print(f'[Client {client[0]}:{client[1]}] Received ACK for FIN from client')
+                    fin_acked = True
+                elif (client_addr != client) :
+                    print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
+                else :
+                    print(f'[Client {client[0]}:{client[1]}] Received non-ACK flag')
+            except :
+                if time.time() > time_limit:
+                    print(
+                        f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
+                    )
+                    break
+                print(f'[Client {client[0]}:{client[1]}] Connection timed out. Resending FIN message')
+        
+        client_fin_acked = False
+        time_limit = time.time() + TIMEOUT_LISTEN
+        while (not client_fin_acked) :
+            try :
+                response, client_addr = self.conn.listen_segment()
+                self.segment = Segment.from_bytes(response)
+                if (client_addr == client and self.segment.get_flag() == FIN_ACK_FLAG) :
+                    print(f'[Client {client[0]}:{client[1]}] Received FIN request from client. Sending ACK and shutting down connection.')
+                    self.segment.set_payload(bytes())
+                    self.segment.set_flag(["ACK"])
+                    self.conn.send(self.segment.to_bytes(), client[0], client[1])
+                    client_fin_acked = True
+                elif (client_addr != client) :
+                    print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
+                else :
+                    print(f'[Client {client[0]}:{client[1]}] Received non-FIN-ACK flag')
+            except TimeoutError :
+                if time.time() > time_limit:
+                    print(
+                        f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
+                    )
+                    break
+                print(f'[Client {client[0]}:{client[1]}] Connection timed out. Waiting again.')
 
     def send_move(self, move : int, currClient) :
-        print(currClient)
+        header = self.segment.get_header()
+        header["seq"] = 0
+        header["ack"] = 0
+        self.segment.set_header(header)
         message = int.to_bytes(move,64,'big')
         self.segment.set_payload(message)
         self.segment.set_checksum(crc16(message))
@@ -170,6 +234,10 @@ class ServerGame:
                     print("Received message from wrong address, listening again")
             except :
                 print("Error sending move, sending again")
+                header = self.segment.get_header()
+                header["seq"] = 0
+                header["ack"] = 0
+                self.segment.set_header(header)
                 self.segment.set_payload(message)
                 self.segment.set_checksum(crc16(message))
                 self.conn.send(self.segment.to_bytes(), currClient[0], currClient[1])
@@ -177,7 +245,7 @@ class ServerGame:
     def receive_move(self, currClient) :
         moveReceived = False
         while(not(moveReceived)) :
-            # try :
+            try :
                 data, server_addr = self.conn.listen_segment()
                 self.segment = Segment.from_bytes(data)
                 if server_addr == currClient  :
@@ -185,6 +253,10 @@ class ServerGame:
                         print("Move successfully received from client")
                         moveReceived = True
                         oppMove = int.from_bytes(self.segment.get_payload(), "big")
+                        header = self.segment.get_header()
+                        header["ack"] = header["seq"] + 1
+                        header["seq"] = 0
+                        self.segment.set_header(header)
                         self.segment.set_payload(bytes())
                         self.segment.set_flag(["ACK"])
                         self.conn.send(self.segment.to_bytes(), currClient[0], currClient[1])
@@ -193,8 +265,8 @@ class ServerGame:
                         print("Received message is corrupted, listening again")
                 else :
                     print("Received message from wrong address, listening again")
-            # except :
-                # print("Error receiving move, waiting again")
+            except :
+                print("Error receiving move, waiting again")
 
 if __name__ == "__main__":
     SERVER = ServerGame()
