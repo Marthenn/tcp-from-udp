@@ -13,6 +13,7 @@ from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, WI
 from lib.crc16 import crc16
 import time
 
+
 class Server:
     """
     The server class of the file transfer application using UDP
@@ -191,22 +192,21 @@ class Server:
 
     def initiate_transfer(self):
         """Initiate file transfer to all clients"""
-        self.split_file()
         for client in self.client_list:
             self.three_way_handshake(client)
             self.transfer_file(client)
-    
-    def transfer_file(self, client) :
+
+    def transfer_file(self, client):
         """Starts transferring file to client"""
         segment_count = len(self.segment_list) + 2
         window_size = min(segment_count - 2, WINDOW_SIZE)
-        sb = 2 # Sequence base
+        sb = 2  # Sequence base
         reset = False
         print(f'[Client {client[0]}:{client[1]}] Initiating file transfer')
-        while (sb < segment_count and not(reset)) :
+        while (sb < segment_count and not (reset)):
             sm = window_size
             # Kirimkan data
-            for i in range(sm) :
+            for i in range(sm):
                 print(
                     f"[Client {client[0]}:{client[1]}][Num={sb + i}] Sending Segment"
                 )
@@ -215,38 +215,45 @@ class Server:
                         self.segment_list[i + sb -
                                           2].to_bytes(), client[0], client[1]
                     )
-            for i in range(sm) :
-                try :
+            for i in range(sm):
+                try:
                     response, client_addr = self.conn.listen_segment()
                     self.segment = Segment.from_bytes(response)
-                    if (client_addr == client and self.segment.get_flag() == ACK_FLAG) :
+                    if (client_addr == client and self.segment.get_flag() == ACK_FLAG):
                         header = self.segment.get_header()
                         acked_num = header["ack"]
-                        if (acked_num == sb + 1) :
-                            print(f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK from client')
+                        if (acked_num == sb + 1):
+                            print(
+                                f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK from client')
                             sb += 1
                             window_size = min(segment_count - sb, WINDOW_SIZE)
-                        else : 
-                            print(f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK for wrong segment')
-                            if (acked_num > sb) : 
+                        else:
+                            print(
+                                f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK for wrong segment')
+                            if (acked_num > sb):
                                 sm = (sm-sb) + acked_num
                                 sb = acked_num
-                    elif (client_addr != client) :
-                        print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received message from wrong client')
-                    elif (self.segment.get_flag() == SYN_ACK_FLAG) :
-                        print(f'[ INFO ] [Client {client[0]}:{client[1]}] Asked to reset connection')
+                    elif (client_addr != client):
+                        print(
+                            f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received message from wrong client')
+                    elif (self.segment.get_flag() == SYN_ACK_FLAG):
+                        print(
+                            f'[ INFO ] [Client {client[0]}:{client[1]}] Asked to reset connection')
                         reset = True
                         break
-                    else :
-                        print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received non-ACK flag')
-                except TimeoutError :
-                    print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Connection time out, resending previous segments')
-        
-        if reset :
+                    else:
+                        print(
+                            f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received non-ACK flag')
+                except TimeoutError:
+                    print(
+                        f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Connection time out, resending previous segments')
+
+        if reset:
             self.three_way_handshake(client)
             self.transfer_file(client)
-        else :
-            print(f'[Client {client[0]}:{client[1]}] File transfer finished, sending FIN message')
+        else:
+            print(
+                f'[Client {client[0]}:{client[1]}] File transfer finished, sending FIN message')
 
             fin_acked = False
             client_still_active = True
@@ -257,51 +264,61 @@ class Server:
                 self.segment.set_flag(["FIN", "ACK"])
                 header = self.segment
                 self.conn.send(self.segment.to_bytes(), client[0], client[1])
-                try :
+                try:
                     response, client_addr = self.conn.listen_segment()
                     self.segment = Segment.from_bytes(response)
-                    if (client_addr == client and self.segment.get_flag() == ACK_FLAG) :
-                        print(f'[Client {client[0]}:{client[1]}] Received ACK for FIN from client')
+                    if (client_addr == client and self.segment.get_flag() == ACK_FLAG):
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received ACK for FIN from client')
                         fin_acked = True
-                    elif (client_addr != client) :
-                        print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
-                    else :
-                        print(f'[Client {client[0]}:{client[1]}] Received non-ACK flag')
-                except :
+                    elif (client_addr != client):
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received message from wrong client')
+                    else:
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received non-ACK flag')
+                except:
                     if time.time() > time_limit:
                         print(
                             f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
                         )
                         break
-                    print(f'[Client {client[0]}:{client[1]}] Connection timed out. Resending FIN message')
+                    print(
+                        f'[Client {client[0]}:{client[1]}] Connection timed out. Resending FIN message')
                     client_still_active = False
-            
+
             client_fin_acked = False
             time_limit = time.time() + TIMEOUT_LISTEN
-            while (not client_fin_acked and client_still_active) :
-                try :
+            while (not client_fin_acked and client_still_active):
+                try:
                     response, client_addr = self.conn.listen_segment()
                     self.segment = Segment.from_bytes(response)
-                    if (client_addr == client and self.segment.get_flag() == FIN_ACK_FLAG) :
-                        print(f'[Client {client[0]}:{client[1]}] Received FIN request from client. Sending ACK and shutting down connection.')
+                    if (client_addr == client and self.segment.get_flag() == FIN_ACK_FLAG):
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received FIN request from client. Sending ACK and shutting down connection.')
                         self.segment.set_payload(bytes())
                         self.segment.set_flag(["ACK"])
-                        self.conn.send(self.segment.to_bytes(), client[0], client[1])
+                        self.conn.send(self.segment.to_bytes(),
+                                       client[0], client[1])
                         client_fin_acked = True
-                    elif (client_addr != client) :
-                        print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
-                    else :
-                        print(f'[Client {client[0]}:{client[1]}] Received non-FIN-ACK flag')
-                except TimeoutError :
+                    elif (client_addr != client):
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received message from wrong client')
+                    else:
+                        print(
+                            f'[Client {client[0]}:{client[1]}] Received non-FIN-ACK flag')
+                except TimeoutError:
                     if time.time() > time_limit:
                         print(
                             f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
                         )
                         break
-                    print(f'[Client {client[0]}:{client[1]}] Connection timed out. Waiting again.')
+                    print(
+                        f'[Client {client[0]}:{client[1]}] Connection timed out. Waiting again.')
 
 
 if __name__ == "__main__":
     SERVER = Server()
+    SERVER.split_file()
     SERVER.listen_for_clients()
     SERVER.initiate_transfer()
