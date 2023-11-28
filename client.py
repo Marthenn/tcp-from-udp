@@ -59,13 +59,13 @@ class Client:
             self.segment.to_bytes(), self.server_ip, self.conn.broadcast_port
         )
 
-    def acknowledge(self, ack_number: int, server_address: Tuple[str, str]):
+    def acknowledge(self, seq_number: int, server_address: Tuple[str, str]):
         """Send acknowledge to the server"""
         response = Segment()
         response.set_flag(["ACK"])
         response_header = response.get_header()
-        response_header["seq"] = ack_number - 1
-        response_header["ack"] = ack_number
+        response_header["seq"] = seq_number
+        response_header["ack"] = seq_number + 1
         response.set_header(response_header)
         self.conn.send(response.to_bytes(),
                        server_address[0], server_address[1])
@@ -183,16 +183,16 @@ class Client:
                     # Received valid data that is next in line to be received
                     elif (self.segment.get_header()["seq"] == seq_number
                           ):
-                        payload = self.segment.get_payload()
                         print(
                             f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received Segment {seq_number}"
                         )
+                        payload = self.segment.get_payload()
+                        self.file.write(payload)
                         print(
                             f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending ACK {seq_number + 1}"
                         )
-                        self.file.write(payload)
-                        seq_number += 1
                         self.acknowledge(seq_number, server_address)
+                        seq_number += 1
                         # Prevent the loop from continuing, which would cause ACK to be sent twice
                         continue
                     # End of File
@@ -234,7 +234,7 @@ class Client:
             "ack": seq_number,
             "seq": seq_number
         })
-        fin_ack_segment.set_flag(["FIN","ACK"])
+        fin_ack_segment.set_flag(["FIN", "ACK"])
         self.conn.send(fin_ack_segment.to_bytes(),
                        server_address[0], server_address[1])
 
