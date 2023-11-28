@@ -1,7 +1,5 @@
 import hashlib
 
-import hashlib
-
 def calculate_md5(file_path):
     with open(file_path, 'rb') as file:
         data = file.read()
