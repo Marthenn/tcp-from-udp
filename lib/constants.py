@@ -10,6 +10,7 @@ CRC_INIT = 0xFFFF
 
 # Connection
 TIMEOUT = 5
+TIMEOUT_LISTEN = 15
 SEGMENT_SIZE = 32768
 
 # Sizes
