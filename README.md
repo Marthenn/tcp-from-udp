@@ -49,3 +49,5 @@ clientGame.py: error: the following arguments are required: client_port, broadca
 3. File Transfer
 4. Tic-Tac-Toe TCP Game
 5. Remote PC Connection
+6. Metadata
+7. Optimasi Manajemen Memori
