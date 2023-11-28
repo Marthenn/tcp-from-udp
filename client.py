@@ -185,10 +185,10 @@ class Client:
                           ):
                         payload = self.segment.get_payload()
                         print(
-                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received Filename: {metadata[0]}, File Extension: {metadata[1]}, File Size: {metadata[2]}"
+                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received Segment {seq_number}"
                         )
                         print(
-                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending ACK {metadata_seq_number + 1}"
+                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending ACK {seq_number + 1}"
                         )
                         self.file.write(payload)
                         seq_number += 1
