@@ -19,13 +19,17 @@ class Client:
     """
 
     def __init__(self):
-        client_port, broadcast_port, output_file = parse_args(False)
+        client_port, broadcast_port, output_file, server_ip, client_ip = parse_args(False)
+        self.server_ip = server_ip
         self.client_port = client_port
         self.broadcast_port = broadcast_port
         self.output_file = output_file.split("/")[-1]
         self.file = self.create_file()
         self.conn = Connection(
-            port=self.client_port, broadcast=self.broadcast_port, as_server=False
+            ip = client_ip,
+            port=self.client_port,
+            broadcast=self.broadcast_port,
+            as_server=False
         )
         self.segment = Segment()
 
@@ -45,7 +49,7 @@ class Client:
     def connect(self):
         """Connect"""
         self.conn.send(
-            self.segment.to_bytes(), self.conn.ip, self.conn.broadcast_port
+            self.segment.to_bytes(), self.server_ip, self.conn.broadcast_port
         )
 
     def three_way_handshake(self):
@@ -56,7 +60,7 @@ class Client:
         3. Send ACK to server
         """
         while True:
-            server_addr = (DEFAULT_IP, self.broadcast_port)
+            server_addr = (self.server_ip, self.broadcast_port)
             try:
                 data, server_addr = self.conn.listen_segment()
                 self.segment = Segment.from_bytes(data)

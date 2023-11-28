@@ -27,8 +27,15 @@ def parse_args(is_server: bool = False):
             type=str,
             help="The path to the file to be sent"
         )
+        parser.add_argument(
+            "server_ip",
+            type=str,
+            help="The ip address of the server",
+            const="127.0.0.1",
+            nargs="?"
+        )
         args = parser.parse_args()
-        return args.broadcast_port, args.path_file
+        return args.broadcast_port, args.path_file, args.server_ip
 
     parser = argparse.ArgumentParser(
         description="Client for the file transfer application using UDP"
@@ -48,8 +55,23 @@ def parse_args(is_server: bool = False):
         type=str,
         help="The path to the file to be received"
     )
+    parser.add_argument(
+        "server_ip",
+        type=str,
+        help="The ip address of the server",
+        const="127.0.0.1",
+        nargs="?"
+    )
+    parser.add_argument(
+        "client_ip",
+        type=str,
+        help="The ip address of the client",
+        const="127.0.0.1",
+        nargs="?"
+    )
     args = parser.parse_args()
-    return args.client_port, args.broadcast_port, args.path_file
+    print(args)
+    return args.client_port, args.broadcast_port, args.path_file, args.server_ip, args.client_ip
 
 
 if __name__ == "__main__":

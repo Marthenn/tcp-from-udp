@@ -21,8 +21,13 @@ class Server:
     """
     def __init__(self) -> None:
         args = parse_args(True)
-        broadcast_port, input_file_path = args    
-        self.conn = Connection(broadcast=broadcast_port, as_server=True)
+        broadcast_port, input_file_path, server_ip = args
+        self.ip = server_ip
+        self.conn = Connection(
+            ip=self.ip,
+            broadcast=broadcast_port,
+            as_server=True
+        )
         self.input_file_path = input_file_path
         self.input_file_name = self.input_file_path.split("/")[-1]
         self.file = self.open_file()
