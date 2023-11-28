@@ -9,7 +9,7 @@ from socket import timeout
 from lib.parser import parse_args
 from lib.connection import Connection
 from lib.segment import Segment
-from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, WINDOW_SIZE, ACK_FLAG, FIN_ACK_FLAG
+from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, WINDOW_SIZE, ACK_FLAG, FIN_ACK_FLAG, DEFAULT_IP
 from lib.crc16 import crc16
 
 class Server:
@@ -23,6 +23,8 @@ class Server:
     def __init__(self) -> None:
         args = parse_args(True)
         broadcast_port, input_file_path, server_ip = args
+        if server_ip is None:
+            server_ip = DEFAULT_IP
         self.ip = server_ip
         self.conn = Connection(
             ip=self.ip,
@@ -181,7 +183,7 @@ class Server:
             self.segment_list.append(segment)
 
     def get_segment_count(self):
-        """Get how many segment has to be created to sent the given file"""
+        """Get how many segment has to be created to send the given file"""
         return ceil(self.get_file_size() / SEGMENT_SIZE)
 
     def initiate_transfer(self):
