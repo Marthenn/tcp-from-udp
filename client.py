@@ -23,6 +23,10 @@ class Client:
     def __init__(self):
         client_port, broadcast_port, output_file, server_ip, client_ip = parse_args(
             False)
+        if server_ip is None:
+            server_ip = DEFAULT_IP
+        if client_ip is None:
+            client_ip = DEFAULT_IP
         self.server_ip = server_ip
         self.client_port = client_port
         self.broadcast_port = broadcast_port
