@@ -21,7 +21,6 @@ class Connection() :
     def send(self, msg, ip : str, port : int) :
         """Send message through given ip and port"""
         self.socket.sendto(msg, (ip, port))
-        self.socket.settimeout(TIMEOUT)
     
     def close(self) :
         """Close the socket held by the Connection object"""
@@ -30,7 +29,6 @@ class Connection() :
     def listen_segment(self) :
         """Listen for segment from the socket held by this object"""
         try :
-            self.socket.settimeout(TIMEOUT_LISTEN)
             return self.socket.recvfrom(SEGMENT_SIZE)
         except TimeoutError as exc:
             raise TimeoutError from exc

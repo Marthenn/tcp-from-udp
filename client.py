@@ -8,7 +8,7 @@ from socket import timeout
 from lib.parser import parse_args
 from lib.connection import Connection
 from lib.segment import Segment
-from lib.constants import ACK_FLAG, SYN_ACK_FLAG, SYN_FLAG, DEFAULT_IP, FIN_FLAG, TIMEOUT_LISTEN
+from lib.constants import ACK_FLAG, SYN_ACK_FLAG, SYN_FLAG, DEFAULT_IP, FIN_FLAG, TIMEOUT_LISTEN, FIN_ACK_FLAG
 
 
 class Client:
@@ -196,9 +196,9 @@ class Client:
                         # Prevent the loop from continuing, which would cause ACK to be sent twice
                         continue
                     # End of File
-                    elif self.segment.get_flag() == FIN_FLAG | ACK_FLAG:
+                    elif self.segment.get_flag() == FIN_ACK_FLAG:
                         print(
-                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received FIN"
+                            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Received FIN-ACK"
                         )
                         break
                     # Received previously received data
@@ -234,7 +234,7 @@ class Client:
             "ack": seq_number,
             "seq": seq_number
         })
-        fin_ack_segment.set_flag(["ACK"])
+        fin_ack_segment.set_flag(["FIN","ACK"])
         self.conn.send(fin_ack_segment.to_bytes(),
                        server_address[0], server_address[1])
 

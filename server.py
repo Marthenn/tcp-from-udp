@@ -9,8 +9,9 @@ from socket import timeout
 from lib.parser import parse_args
 from lib.connection import Connection
 from lib.segment import Segment
-from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, WINDOW_SIZE, ACK_FLAG, FIN_ACK_FLAG, DEFAULT_IP
+from lib.constants import SEGMENT_SIZE, PAYLOAD_SIZE, SYN_FLAG, SYN_ACK_FLAG, WINDOW_SIZE, ACK_FLAG, FIN_ACK_FLAG, DEFAULT_IP, TIMEOUT_LISTEN
 from lib.crc16 import crc16
+import time
 
 class Server:
     """
@@ -31,7 +32,7 @@ class Server:
             broadcast=broadcast_port,
             as_server=True
         )
-        self.input_file_path = input_file_path
+        self.input_file_path = 'sent_file/' + input_file_path
         self.input_file_name = self.input_file_path.split("/")[-1]
         self.file = self.open_file()
         self.segment = Segment()
@@ -125,11 +126,11 @@ class Server:
         Return the file handle of the input file
         """
         try:
-            file = open(f"sent_file/{self.input_file_path}", "wb")
+            file = open(f"{self.input_file_path}", "rb")
             return file
         except FileNotFoundError:
             print(
-                f"[!] {self.input_file_path} doesn't exists. Server exiting...")
+                f"[Error] {self.input_file_path} doesn't exists. Server exiting...")
             sys.exit(1)
 
     def get_file_size(self):
@@ -137,7 +138,7 @@ class Server:
         Return the size of the input file
         """
         try:
-            return os.path.getsize(self.input_file_path)
+            return os.path.getsize(f"{self.input_file_path}")
         except:
             print("Error reading file", self.input_file_path, ". Aborting.")
 
@@ -150,8 +151,10 @@ class Server:
         metadata_segment = Segment()
         filename = self.input_file_name.split(".")[0]
         extension = self.input_file_name.split(".")[1]
+        filesize = self.get_file_size()
+        print(f'[INFO] Filesize : {filesize} bytes')
         metadata = filename.encode() + ",".encode() + extension.encode() + \
-            ",".encode() + str(self.get_file_size()).encode()
+            ",".encode() + str(filesize).encode()
         metadata_segment.set_payload(metadata)
         header = metadata_segment.get_header()
         header["seq"] = 2
@@ -166,8 +169,8 @@ class Server:
             segment = Segment()
 
             # Create payload
-            offset += PAYLOAD_SIZE
             self.file.seek(offset)
+            offset += PAYLOAD_SIZE
             data_to_set = self.file.read(PAYLOAD_SIZE)
             segment.set_payload(data_to_set)
 
@@ -195,49 +198,64 @@ class Server:
     
     def transfer_file(self, client) :
         """Starts transferring file to client"""
-        segment_count = len(self.segment_list)
-        window_size = min(segment_count, WINDOW_SIZE)
+        segment_count = len(self.segment_list) + 2
+        window_size = min(segment_count - 2, WINDOW_SIZE)
         sb = 2 # Sequence base
-        sm = window_size + 1 + sb # Sequence max
         reset = False
         print(f'[Client {client[0]}:{client[1]}] Initiating file transfer')
         while (sb < segment_count and not(reset)) :
+            sm = window_size
             # Kirimkan data
-            for i in range(sb, sm) :
-                print(f'[Client {client[0]}:{client[1]}][Num={i}] Sending segment to client')
-                self.conn.send(self.segment_list[i].to_bytes(), client[0], client[1])
-            for i in range(window_size) :
+            for i in range(sm) :
+                print(
+                    f"[Client {client[0]}:{client[1]}][Num={sb + i}] Sending Segment"
+                )
+                if i + sb < segment_count:
+                    self.conn.send(
+                        self.segment_list[i + sb -
+                                          2].to_bytes(), client[0], client[1]
+                    )
+            for i in range(sm) :
                 try :
                     response, client_addr = self.conn.listen_segment()
                     self.segment = Segment.from_bytes(response)
                     if (client_addr == client and self.segment.get_flag() == ACK_FLAG) :
                         header = self.segment.get_header()
                         acked_num = header["ack"]
-                        print(f'[Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK from client')
-                        if (acked_num > sb) : 
-                            sm = (sm-sb) + acked_num
-                            sb = acked_num
+                        if (acked_num == sb + 1) :
+                            print(f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK from client')
+                            sb += 1
+                            window_size = min(segment_count - sb, WINDOW_SIZE)
+                        else : 
+                            print(f'[ INFO ] [Client {client[0]}:{client[1]}][Num={acked_num}] Received ACK for wrong segment')
+                            if (acked_num > sb) : 
+                                sm = (sm-sb) + acked_num
+                                sb = acked_num
                     elif (client_addr != client) :
-                        print(f'[Client {client[0]}:{client[1]}][Num={i+sb}] Received message from wrong client')
+                        print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received message from wrong client')
                     elif (self.segment.get_flag() == SYN_ACK_FLAG) :
-                        print(f'[Client {client[0]}:{client[1]}] Asked to reset connection')
+                        print(f'[ INFO ] [Client {client[0]}:{client[1]}] Asked to reset connection')
                         reset = True
                         break
                     else :
-                        print(f'[Client {client[0]}:{client[1]}][Num={i+sb}] Received non-ACK flag')
+                        print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Received non-ACK flag')
                 except TimeoutError :
-                    print(f'[Client {client[0]}:{client[1]}][Num={i+sb}] Connection time out, resending previous segments')
+                    print(f'[ ERROR ] [Client {client[0]}:{client[1]}][Num={i+sb}] Connection time out, resending previous segments')
         
         if reset :
             self.three_way_handshake(client)
             self.transfer_file(client)
         else :
             print(f'[Client {client[0]}:{client[1]}] File transfer finished, sending FIN message')
-            fin_acked = False
 
-            while (not fin_acked) :
-                self.segment.set_payload()
+            fin_acked = False
+            client_still_active = True
+            time_limit = time.time() + TIMEOUT_LISTEN
+
+            while not fin_acked:
+                self.segment.set_payload(bytes())
                 self.segment.set_flag(["FIN", "ACK"])
+                header = self.segment
                 self.conn.send(self.segment.to_bytes(), client[0], client[1])
                 try :
                     response, client_addr = self.conn.listen_segment()
@@ -249,26 +267,38 @@ class Server:
                         print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
                     else :
                         print(f'[Client {client[0]}:{client[1]}] Received non-ACK flag')
-                except TimeoutError :
-                    print(f'[Client {client[0]}:{client[1]}] Connection time out, resending FIN message')
+                except :
+                    if time.time() > time_limit:
+                        print(
+                            f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
+                        )
+                        break
+                    print(f'[Client {client[0]}:{client[1]}] Connection timed out. Resending FIN message')
+                    client_still_active = False
             
             client_fin_acked = False
-            while (not client_fin_acked) :
+            time_limit = time.time() + TIMEOUT_LISTEN
+            while (not client_fin_acked and client_still_active) :
                 try :
                     response, client_addr = self.conn.listen_segment()
                     self.segment = Segment.from_bytes(response)
                     if (client_addr == client and self.segment.get_flag() == FIN_ACK_FLAG) :
-                        print(f'[Client {client[0]}:{client[1]}] Received FIN reuest from client. Sending ACK.')
-                        self.segment.set_payload()
+                        print(f'[Client {client[0]}:{client[1]}] Received FIN request from client. Sending ACK and shutting down connection.')
+                        self.segment.set_payload(bytes())
                         self.segment.set_flag(["ACK"])
                         self.conn.send(self.segment.to_bytes(), client[0], client[1])
                         client_fin_acked = True
                     elif (client_addr != client) :
                         print(f'[Client {client[0]}:{client[1]}] Received message from wrong client')
                     else :
-                        print(f'[Client {client[0]}:{client[1]}] Received non-FIN flag')
+                        print(f'[Client {client[0]}:{client[1]}] Received non-FIN-ACK flag')
                 except TimeoutError :
-                    print(f'[Client {client[0]}:{client[1]}] Connection time out, listening again for FIN message')
+                    if time.time() > time_limit:
+                        print(
+                            f"[ WARNING ] [Client {client[0]}:{client[1]}] [Timeout] Server waited too long, connection closed."
+                        )
+                        break
+                    print(f'[Client {client[0]}:{client[1]}] Connection timed out. Waiting again.')
 
 
 if __name__ == "__main__":
