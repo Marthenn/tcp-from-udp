@@ -186,6 +186,8 @@ class Server:
             segment.set_checksum(crc16(data_to_set))
             self.segment_list.append(segment)
 
+        print("[ INFO ] File splitted into", len(self.segment_list), "segments")
+
     def get_segment_count(self):
         """Get how many segment has to be created to send the given file"""
         return ceil(self.get_file_size() / SEGMENT_SIZE)
