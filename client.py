@@ -47,7 +47,7 @@ class Client:
 
     def close_file(self):
         """Close the output file"""
-        self.output_file.close()
+        self.file.close()
 
     def connect(self):
         """Connect"""
