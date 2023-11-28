@@ -219,16 +219,6 @@ class Client:
                 self.acknowledge(seq_number, server_address)
 
         # Received FIN, sending FIN-ACK
-        print(
-            f"[ INFO ] [Server {server_address[0]}:{server_address[1]}] Sending FIN-ACK")
-        fin_ack_segment = Segment()
-        fin_ack_segment.set_header({
-            "ack": seq_number,
-            "seq": seq_number
-        })
-        fin_ack_segment.set_flag(["ACK", "FIN"])
-        self.conn.send(fin_ack_segment.to_bytes(),
-                       server_address[0], server_address[1])
         is_ack_received = False
         time_limit = time.time() + TIMEOUT_LISTEN
         while not is_ack_received:
