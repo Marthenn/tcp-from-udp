@@ -19,6 +19,7 @@ class Server:
     1. Establishes a three-way handshake connection with the server
     2. Send the file to the client
     """
+
     def __init__(self) -> None:
         args = parse_args(True)
         broadcast_port, input_file_path, server_ip = args
@@ -32,22 +33,25 @@ class Server:
         self.input_file_name = self.input_file_path.split("/")[-1]
         self.file = self.open_file()
         self.segment = Segment()
-        self.segment_list : List[Segment] = []
+        self.segment_list: List[Segment] = []
         self.client_list = []
 
-    def listen_for_clients(self) :
+    def listen_for_clients(self):
         print("[ INFO ] Listening for clients")
         while True:
-            try :
+            try:
                 segment, client_addr = self.conn.listen_segment()
                 client_ip, client_port = client_addr
                 self.client_list.append(client_addr)
-                print(f"[ INFO ] Received connection request from client: {client_ip}:{client_port}")
+                print(
+                    f"[ INFO ] Received connection request from client: {client_ip}:{client_port}")
 
-                answer = input("[ PROMPT ] Do you want to add more clients? (y/n) ")
+                answer = input(
+                    "[ PROMPT ] Do you want to add more clients? (y/n) ")
                 while not (answer.lower() in ["y", "n"]):
                     print("[ ERROR ] Invalid input")
-                    answer = input("[ PROMPT ] Do you want to add more clients? (y/n) ")
+                    answer = input(
+                        "[ PROMPT ] Do you want to add more clients? (y/n) ")
                 if answer.lower() == "n":
                     print("\n[ INFO ] The following clients will be served:")
                     for idx, client in enumerate(self.client_list):
@@ -58,7 +62,7 @@ class Server:
             except timeout:
                 print("[ TIMEOUT ] Timeout while listening for client, exiting")
                 break
-    
+
     def three_way_handshake(self, client_addr):
         """
         Establishes a three-way handshake connection with the client
@@ -122,36 +126,40 @@ class Server:
             file = open(f"sent_file/{self.input_file_path}", "wb")
             return file
         except FileNotFoundError:
-            print(f"[!] {self.input_file_path} doesn't exists. Server exiting...")
+            print(
+                f"[!] {self.input_file_path} doesn't exists. Server exiting...")
             sys.exit(1)
 
-    def get_file_size(self) :
+    def get_file_size(self):
         """
         Return the size of the input file
         """
-        try :
+        try:
             return os.path.getsize(self.input_file_path)
         except:
             print("Error reading file", self.input_file_path, ". Aborting.")
 
     def split_file(self):
         """Split the file into segments"""
+        # SYN : 0
+        # ACK : 1
+        # Metadata : 2
+        # Data : 3 - n
         metadata_segment = Segment()
         filename = self.input_file_name.split(".")[0]
         extension = self.input_file_name.split(".")[1]
-        metadata = filename.encode() + ",".encode() + extension.encode() + ",".encode() + str(self.get_file_size()).encode()
+        metadata = filename.encode() + ",".encode() + extension.encode() + \
+            ",".encode() + str(self.get_file_size()).encode()
         metadata_segment.set_payload(metadata)
         header = metadata_segment.get_header()
-        # TODO : Change the number below
         header["seq"] = 2
         header["ack"] = 0
         metadata_segment.set_header(header)
         self.segment_list.append(metadata_segment)
 
-
-        num_of_segment = self.get_segment_count()
+        segment_count = self.get_segment_count()
         offset = 0
-        for i in range(num_of_segment):
+        for i in range(segment_count):
             segment = Segment()
 
             # Create payload
@@ -162,7 +170,6 @@ class Server:
 
             # Create header
             header = segment.get_header()
-            # TODO : Change the number below
             header["seq"] = i + 3
             header["ack"] = 3
             segment.set_header(header)
