@@ -70,7 +70,6 @@ def parse_args(is_server: bool = False):
         nargs="?"
     )
     args = parser.parse_args()
-    print(args)
     return args.client_port, args.broadcast_port, args.path_file, args.server_ip, args.client_ip
 
 
