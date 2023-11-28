@@ -1,6 +1,6 @@
 # BaraFansClub - Jaringan Komputer 2023
 
-Repository template tugas besar 2 - IF3130 - Jaringan Komputer - 2023
+Repository tugas besar 2 - IF3130 - Jaringan Komputer - 2023
 
 # TCP Over UDP
 
